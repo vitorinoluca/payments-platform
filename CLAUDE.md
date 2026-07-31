@@ -1,6 +1,6 @@
 # payments-platform
 
-Plataforma de pagos P2P con motor de liquidación en tiempo real, construida como proyecto de portfolio para demostrar dominio de arquitectura fintech real (no un CRUD con Stripe).
+Plataforma de pagos P2P con motor de liquidación en tiempo real, construida como proyecto de portfolio para demostrar dominio de arquitectura fintech real.
 
 ## Qué es esto
 
