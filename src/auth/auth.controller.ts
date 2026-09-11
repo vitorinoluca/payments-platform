@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthService } from './auth.service';
@@ -13,6 +14,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 // límite más estricto que el default global de la app
 const BRUTE_FORCE_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

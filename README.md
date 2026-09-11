@@ -17,6 +17,8 @@ npm install
 npm run start:dev   # http://localhost:3000
 ```
 
+Docs interactivas (Swagger): `http://localhost:3000/api`
+
 ## Tests
 
 ```bash
