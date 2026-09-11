@@ -32,6 +32,7 @@ import { WebhookEndpoint } from './webhooks/entities/webhook-endpoint.entity';
         entities: [Account, Transaction, LedgerEntry, IdempotencyKey, User, RefreshToken, WebhookEndpoint, AuditLog],
         uuidExtension: 'pgcrypto', // gen_random_uuid() viene incluido en Postgres 16, sin extensiones extra
         synchronize: true, // dev only, hasta que existan migraciones
+        extra: { max: 30 }, // el pool default (10) se agota con locks pesimistas bajo concurrencia alta
       }),
     }),
     LedgerModule,
