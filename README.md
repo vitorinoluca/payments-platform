@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/vitorinoluca/payments-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/vitorinoluca/payments-platform/actions/workflows/ci.yml)
 
+🔗 **Demo (Swagger):** https://payments-platform-hrcm.onrender.com/api
+> Plan free de Render: si nadie la usó en 15 min, el primer request tarda ~30s en despertar.
+
 Mini plataforma de pagos P2P (estilo Wise/Venmo). Proyecto de portfolio enfocado en los problemas reales de un sistema de pagos: contabilidad de doble entrada, idempotencia, concurrencia, fraude y multi-moneda.
 
 ## Stack
