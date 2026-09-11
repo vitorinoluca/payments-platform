@@ -18,6 +18,7 @@ describe('Auth (e2e)', () => {
 
     app = moduleRef.createNestApplication();
     await app.init();
+    await app.listen(0); // evita listen() concurrente cuando supertest dispara requests en paralelo
     dataSource = moduleRef.get(DataSource);
   });
 
