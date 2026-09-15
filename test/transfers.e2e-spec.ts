@@ -166,8 +166,8 @@ describe('POST /transfers - concurrencia (e2e)', () => {
     const source = await accountRepo.save(accountRepo.create({ currency: 'USD' }));
     const destination = await accountRepo.save(accountRepo.create({ currency: 'USD' }));
 
-    const initialBalance = 2_000_000n;
-    const highAmount = 1_000_000n; // igual al umbral de fraude por monto
+    const initialBalance = 200_000_000n;
+    const highAmount = 100_000_000n; // igual al umbral de fraude por monto
 
     const seedTransaction = await transactionRepo.save(
       transactionRepo.create({
@@ -275,7 +275,7 @@ describe('POST /transfers - concurrencia (e2e)', () => {
       .where('entry.accountId = :id', { id: destination.id })
       .getRawOne<{ sum: string }>();
     expect(BigInt(destinationSum!.sum)).toBe(smallAmount * BigInt(normalTransfers));
-  }, 15000);
+  }, 120_000); // 25 transferencias secuenciales, cada una con el delay simulado de banco (1.5-3s)
 
   it('convierte el monto con la tasa de cambio en vivo cuando las cuentas tienen distinta moneda', async () => {
     const accountRepo = dataSource.getRepository(Account);
