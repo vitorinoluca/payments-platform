@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { DataSource } from 'typeorm';
 import { Account } from '../entities/account.entity';
 import { IdempotencyKey } from '../entities/idempotency-key.entity';
@@ -21,7 +22,7 @@ function makeQueryBuilder(result: unknown) {
 function makeQueryRunner(
   accounts: Account[],
   sum: string,
-  opts: { idempotencyConflict?: boolean; cachedResponse?: unknown } = {},
+  opts: { idempotencyConflict?: boolean; cachedResponse?: unknown; requestHash?: string } = {},
 ) {
   const entrySaveMock = jest.fn().mockImplementation((entries) => Promise.resolve(entries));
   const transactionSaveMock = jest.fn().mockImplementation((t) => Promise.resolve({ id: 'tx-1', ...t }));
@@ -37,7 +38,7 @@ function makeQueryRunner(
     save: transactionSaveMock,
   };
   const idempotencyRepo = {
-    findOneBy: jest.fn().mockResolvedValue({ key: 'k', responseBody: opts.cachedResponse }),
+    findOneBy: jest.fn().mockResolvedValue({ key: 'k', responseBody: opts.cachedResponse, requestHash: opts.requestHash }),
     update: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -68,7 +69,13 @@ describe('TransfersService', () => {
   function build(
     accounts: Account[],
     sum: string,
-    opts: { idempotencyConflict?: boolean; cachedResponse?: unknown; fraudFlagged?: boolean; fxRate?: number } = {},
+    opts: {
+      idempotencyConflict?: boolean;
+      cachedResponse?: unknown;
+      requestHash?: string;
+      fraudFlagged?: boolean;
+      fxRate?: number;
+    } = {},
   ) {
     const queryRunner = makeQueryRunner(accounts, sum, opts);
     const dataSource = { createQueryRunner: jest.fn().mockReturnValue(queryRunner) } as unknown as DataSource;
@@ -130,15 +137,14 @@ describe('TransfersService', () => {
       { id: toId, currency: 'USD' } as Account,
     ];
     const cachedResponse = { id: 'tx-cacheada' };
+    const dto = { fromAccountId: fromId, toAccountId: toId, amountMinorUnits: '30' };
     const { service, queryRunner, realtimeGateway, webhooksService } = build(accounts, '100', {
       idempotencyConflict: true,
       cachedResponse,
+      requestHash: createHash('sha256').update(JSON.stringify(dto)).digest('hex'),
     });
 
-    const result = await service.transfer(
-      { fromAccountId: fromId, toAccountId: toId, amountMinorUnits: '30' },
-      idempotencyKey,
-    );
+    const result = await service.transfer(dto, idempotencyKey);
 
     expect(result).toEqual(cachedResponse);
     expect(queryRunner.manager.getRepository(Account).createQueryBuilder).not.toHaveBeenCalled();
@@ -146,6 +152,23 @@ describe('TransfersService', () => {
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
     expect(realtimeGateway.notifyTransfer).not.toHaveBeenCalled();
     expect(webhooksService.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('rechaza si la Idempotency-Key ya fue usada con un body distinto', async () => {
+    const accounts = [
+      { id: fromId, currency: 'USD' } as Account,
+      { id: toId, currency: 'USD' } as Account,
+    ];
+    const { service, queryRunner } = build(accounts, '100', {
+      idempotencyConflict: true,
+      cachedResponse: { id: 'tx-original' },
+      requestHash: 'hash-de-otro-request',
+    });
+
+    await expect(
+      service.transfer({ fromAccountId: fromId, toAccountId: toId, amountMinorUnits: '30' }, idempotencyKey),
+    ).rejects.toThrow(ConflictException);
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
   });
 
   it('retiene la transferencia como flagged cuando el motor de fraude la marca, sin mover el ledger', async () => {

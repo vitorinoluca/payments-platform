@@ -18,7 +18,7 @@ describe('FraudService', () => {
   it('marca como flagged un monto por encima del umbral, sin consultar velocidad', async () => {
     const manager = makeManager(0);
 
-    const result = await service.evaluate(manager, accountId, 1_000_000n);
+    const result = await service.evaluate(manager, accountId, 100_000_000n);
 
     expect(result).toEqual({ flagged: true, reason: expect.stringContaining('monto') });
     expect((manager as any).repo.count).not.toHaveBeenCalled();
