@@ -10,10 +10,15 @@ export async function createApp(): Promise<NestExpressApplication> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
-  const configService = app.get(ConfigService);
-  const redisIoAdapter = new RedisIoAdapter(app, configService.get<string>('REDIS_URL')!);
-  await redisIoAdapter.connectToRedis();
-  app.useWebSocketAdapter(redisIoAdapter);
+  // el entrypoint de Vercel (api/index.ts) exporta un handler HTTP simple, no el http.Server
+  // crudo que necesita el upgrade de WebSocket — conectar acá solo abriría 2 conexiones a
+  // Redis por cold start sin que nadie las use.
+  if (!process.env.VERCEL) {
+    const configService = app.get(ConfigService);
+    const redisIoAdapter = new RedisIoAdapter(app, configService.get<string>('REDIS_URL')!);
+    await redisIoAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisIoAdapter);
+  }
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('payments-platform API')

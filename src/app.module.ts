@@ -31,8 +31,14 @@ import { WebhookEndpoint } from './webhooks/entities/webhook-endpoint.entity';
         url: config.get<string>('DATABASE_URL'),
         entities: [Account, Transaction, LedgerEntry, IdempotencyKey, User, RefreshToken, WebhookEndpoint, AuditLog],
         uuidExtension: 'pgcrypto', // gen_random_uuid() viene incluido en Postgres 16, sin extensiones extra
-        synchronize: true, // dev only, hasta que existan migraciones
-        extra: { max: 30 }, // el pool default (10) se agota con locks pesimistas bajo concurrencia alta
+        // en Vercel cada cold start crea un DataSource nuevo: re-sincronizar el schema en
+        // cada uno gasta horas de cómputo de Neon gratis y arriesga romper el boot (ya pasó).
+        // El schema ya está aplicado; solo hace falta prender esto localmente al cambiar entities.
+        synchronize: !process.env.VERCEL,
+        // pool chico en serverless: cada instancia de función puede abrir hasta `max` conexiones,
+        // y Fluid Compute corre varias instancias en paralelo — 30 por instancia agota rápido el
+        // límite de conexiones de Neon. Local (un solo proceso) puede permitirse más.
+        extra: { max: process.env.VERCEL ? 5 : 30 },
       }),
     }),
     LedgerModule,
