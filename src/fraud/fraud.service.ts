@@ -7,7 +7,7 @@ export interface FraudCheckResult {
   reason?: string;
 }
 
-const HIGH_AMOUNT_THRESHOLD = 1_000_000n;
+const HIGH_AMOUNT_THRESHOLD = 100_000_000n; // 1.000.000 en unidades enteras
 const VELOCITY_WINDOW_MS = 60_000;
 const VELOCITY_MAX_TRANSFERS = 25;
 
