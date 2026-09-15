@@ -39,7 +39,11 @@ export class Transaction {
   @Column({ type: 'enum', enum: TransactionStatus, default: TransactionStatus.PENDING })
   status: TransactionStatus;
 
-  @CreateDateColumn()
+  // motivo si el fraud check la marcó (status queda en 'flagged'); null si pasó limpia
+  @Column({ type: 'varchar', nullable: true })
+  fraudReason: string | null;
+
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
   @OneToMany(() => LedgerEntry, (entry) => entry.transaction)

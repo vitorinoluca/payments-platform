@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>PayTest</title>
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #0f1215; --border: #22262b; --text: #e8e9ea;
+    --muted: #6b7078; --accent: #4ade80; --ok: #4ade80; --err: #f87171; --warn: #d4a94a;
+    --r: 4px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text);
+    font-size: 14px;
+  }
+
+  .shell { display: flex; min-height: 100vh; min-height: 100dvh; }
+
+  /* ---- sidebar ---- */
+  .sidebar {
+    width: 260px; flex: none; padding: 1.6rem 1.3rem; border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; align-self: flex-start; height: 100vh; height: 100dvh; overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: .5rem; font-size: 1.05rem; font-weight: 600; letter-spacing: -.01em; margin-bottom: 1.4rem; }
+  .brand .logo { font-size: 1rem; }
+  #session-pill {
+    display: block; font-size: .76rem; padding: .45rem .7rem; cursor: pointer; margin-bottom: 1.6rem;
+    background: transparent; color: var(--ok); border: 1px solid var(--border); border-radius: var(--r);
+  }
+  #session-pill.empty { color: var(--muted); cursor: default; }
+
+  .wallet-title { font-size: .68rem; color: var(--muted); margin: 0 0 .7rem; text-transform: uppercase; letter-spacing: .08em; }
+  .accounts { display: flex; flex-direction: column; }
+  .account-card {
+    padding: .7rem .2rem; color: var(--text); cursor: pointer;
+    border: none; border-top: 1px solid var(--border); border-left: 2px solid transparent;
+    opacity: .5; transition: opacity .15s, border-color .15s; padding-left: .6rem;
+  }
+  .accounts .account-card:first-child { border-top: none; }
+  .account-card.active { opacity: 1; border-left-color: var(--accent); }
+  .account-card .cur { font-size: .68rem; color: var(--muted); letter-spacing: .08em; }
+  .account-card .bal { font-size: 1.05rem; font-weight: 600; margin-top: .15rem; font-variant-numeric: tabular-nums; }
+
+  /* ---- main content ---- */
+  .main { flex: 1; padding: 1.8rem 2rem 3rem; min-width: 0; }
+  .main-inner { max-width: 560px; margin: 0 auto; }
+  .center-screen { min-height: calc(100vh - 3.6rem); min-height: calc(100dvh - 3.6rem); display: flex; align-items: center; justify-content: center; }
+  .center-screen[hidden] { display: none; }
+
+  /* ---- webhook panel ---- */
+  .webhook-panel {
+    width: 340px; flex: none; border-left: 1px solid var(--border);
+    position: sticky; top: 0; align-self: flex-start; height: 100vh; height: 100dvh; overflow-y: auto;
+  }
+  .webhook-panel-inner { padding: 1.8rem 1.3rem; }
+  .webhook-panel h2 { margin: 0 0 .2rem; font-size: .95rem; font-weight: 600; }
+  .webhook-panel .sub { font-size: .78rem; color: var(--muted); margin-bottom: 1rem; }
+  .webhook-panel input { margin-bottom: .6rem; }
+  .webhook-preview {
+    margin-top: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r);
+    padding: .8rem; font-size: .72rem; line-height: 1.5; color: var(--muted); white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .card {
+    border: 1px solid var(--border); border-radius: var(--r); padding: 1.3rem;
+    background: var(--panel); margin-bottom: 1.2rem;
+  }
+  .card h2 { margin: 0 0 .2rem; font-size: .95rem; font-weight: 600; }
+  .card .sub { font-size: .78rem; color: var(--muted); margin-bottom: 1rem; }
+  input, select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--r); padding: .65rem .7rem; margin-top: .5rem; font-size: .9rem; font-family: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  button.primary {
+    width: 100%; margin-top: 1rem; padding: .7rem; cursor: pointer;
+    background: var(--accent); color: #06280f; border: none;
+    border-radius: var(--r); font-weight: 600; font-size: .88rem;
+  }
+  button.primary:hover { opacity: .88; }
+  button.primary:active { opacity: .75; }
+  button.primary:disabled { opacity: .4; cursor: default; }
+
+  .auth-card { width: 100%; max-width: 340px; }
+
+  /* ---- send money ---- */
+  .send-row { display: flex; align-items: center; gap: .6rem; }
+  .from-chip {
+    font-size: .78rem; padding: .45rem .7rem; border-radius: var(--r); background: var(--bg);
+    border: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+  }
+  .amount-input { font-size: 1.25rem; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---- dev panel ---- */
+  .card h3 { font-size: .78rem; font-weight: 600; color: var(--muted); margin: .9rem 0 .3rem; text-transform: uppercase; letter-spacing: .04em; }
+  .btn-row { display: flex; gap: .6rem; align-items: center; margin-top: 1rem; }
+  .btn-row .primary, .btn-row .secondary { margin-top: 0; white-space: nowrap; }
+  .btn-row .primary { flex: 1; }
+  #replay-btn { width: 100%; margin-top: .6rem; }
+  #replay-log { margin-top: .5rem; font-size: .78rem; color: var(--muted); }
+  button.secondary {
+    margin-top: .6rem; margin-right: .4rem; padding: .5rem .9rem; cursor: pointer;
+    background: transparent; color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--r); font-weight: 500; font-size: .78rem;
+  }
+  button.secondary:hover { border-color: var(--muted); }
+  #concurrency-log { margin-top: .6rem; }
+  .race-track { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .race-card {
+    padding: .9rem; text-align: center; background: var(--panel); transition: background .2s;
+  }
+  .race-card.won { background: #0d1a10; }
+  .race-card.lost { background: #1a1011; }
+  .race-label { font-size: .72rem; color: var(--muted); margin-bottom: .5rem; }
+  .race-spinner {
+    width: 1.2rem; height: 1.2rem; margin: 0 auto .5rem; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--text); animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .race-result { font-size: .8rem; font-weight: 600; }
+  .race-card.won .race-result { color: var(--ok); }
+  .race-card.lost .race-result { color: var(--err); }
+  .race-summary { margin-top: .6rem; font-size: .76rem; color: var(--muted); text-align: center; }
+
+  #toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(.5rem);
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    padding: .7rem 1.1rem; border-radius: var(--r);
+    font-size: .85rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+    border-left: 2px solid var(--ok); max-width: 90vw; z-index: 10;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.err { border-left-color: var(--err); }
+
+  /* ---- transaction history ---- */
+  .tx-list { display: flex; flex-direction: column; }
+  .tx-row {
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    padding: .65rem .1rem; border-top: 1px solid var(--border); font-size: .82rem;
+  }
+  .tx-list .tx-row:first-child { border-top: none; }
+  .tx-dir { display: flex; align-items: center; gap: .6rem; }
+  .tx-icon { width: 1rem; text-align: center; font-size: .85rem; flex: none; color: var(--muted); }
+  .tx-icon.out { color: var(--err); }
+  .tx-icon.in { color: var(--ok); }
+  .tx-icon.failed { color: var(--err); font-weight: 800; }
+  .tx-meta { color: var(--muted); font-size: .72rem; }
+  .tx-row.is-failed .tx-meta { color: var(--err); }
+  .tx-amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tx-row.is-failed .tx-amount { text-decoration: line-through; opacity: .6; }
+  .tx-status { font-size: .66rem; padding: .15rem .4rem; border-radius: var(--r); text-transform: uppercase; letter-spacing: .03em; border: 1px solid var(--border); }
+  .tx-status.completed { color: var(--ok); }
+  .tx-status.flagged { color: var(--warn); }
+  .tx-status.pending { color: var(--muted); }
+  .tx-status.failed { color: var(--err); }
+  .tx-tags { display: flex; align-items: center; gap: .4rem; flex: none; }
+  .tx-tag { font-size: .64rem; color: var(--warn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; cursor: help; }
+  .empty-hint { color: var(--muted); font-size: .82rem; text-align: center; padding: 1rem 0; }
+
+  @media (max-width: 900px) {
+    .shell { flex-direction: column; }
+    .sidebar, .webhook-panel {
+      width: 100%; height: auto; position: static; overflow-y: visible;
+      border-right: none; border-left: none; border-bottom: 1px solid var(--border);
+    }
+    .accounts { flex-direction: row; overflow-x: auto; }
+    .account-card { flex: 0 0 140px; border-top: none; border-left: none; border-bottom: 2px solid transparent; padding-left: .2rem; }
+    .accounts .account-card:first-child { border-top: none; }
+    .account-card.active { border-left-color: transparent; border-bottom-color: var(--accent); }
+    .main { padding: 1.2rem 1rem 2.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar">
+    <div class="brand"><span class="logo">💸</span>PayTest</div>
+    <span id="session-pill" class="empty" onclick="if(token) logout()">Sin sesión</span>
+    <div id="wallet-block" hidden>
+      <div class="wallet-title">Tus cuentas</div>
+      <div class="accounts" id="wallet"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="main-inner">
+
+      <div id="auth-form" class="center-screen">
+        <div class="card auth-card">
+          <h2>Ingresá a tu cuenta</h2>
+          <div class="sub">Si el email no existe, se crea sola</div>
+          <input id="reg-email" placeholder="Email" value="test@example.com">
+          <input id="reg-pass" type="password" placeholder="Contraseña" value="Passw0rd!">
+          <button class="primary" onclick="continueAuth()">Continuar</button>
+        </div>
+      </div>
+
+      <div id="app-view" hidden>
+        <div class="card">
+          <h2>Enviar dinero</h2>
+          <div class="send-row">
+            <span class="from-chip" id="from-chip"></span>
+          </div>
+          <select id="tr-to"></select>
+          <input id="tr-amount" class="amount-input" value="1000" placeholder="Monto">
+          <div class="btn-row">
+            <button class="primary" id="send-btn" onclick="transfer()">Enviar</button>
+            <button class="secondary" onclick="testConcurrentTransfers()" title="Manda 2 transferencias iguales al mismo tiempo para probar que no se pisan">⇄ Concurrencia</button>
+          </div>
+          <div id="concurrency-log"></div>
+          <button class="secondary" id="replay-btn" onclick="replayLastTransfer()" disabled title="Reenvía la misma petición con la misma Idempotency-Key para probar que no se duplica">↻ Reenviar última transferencia (idempotencia)</button>
+          <div id="replay-log"></div>
+        </div>
+
+        <div class="card">
+          <h2>Movimientos</h2>
+          <div class="tx-list" id="tx-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="webhook-panel" id="webhook-panel" hidden>
+    <div class="webhook-panel-inner">
+      <h2>Lo que recibiría tu webhook</h2>
+      <div class="sub">Se actualiza con cada transferencia completada</div>
+      <input id="wh-url" placeholder="https://example.com/hook">
+      <button class="secondary" onclick="registerWebhook()">Registrar webhook</button>
+      <pre id="webhook-preview" class="webhook-preview">Registrá un webhook y hacé una transferencia para ver el payload acá.</pre>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ponytail: cuentas fijas de la seed local, no hay endpoint para listarlas/crearlas todavía
+const ACCOUNTS = [
+  { id: 'e1712a7f-544f-4013-a6ad-8b2aa6c8c3d9', currency: 'USD', label: 'Cuenta USD', cls: 'usd', balance: '…' },
+  { id: 'b8516f39-c530-40e8-83d9-694eb6f10362', currency: 'ARS', label: 'Cuenta ARS', cls: 'ars', balance: '…' },
+];
+let token = null;
+let fromAccount = ACCOUNTS[0];
+let webhook = null; // { url, secret }, seteado al registrar uno en Integraciones
+let lastTransfer = null; // { body, idempotencyKey, originalId }, para demostrar idempotencia
+
+function val(id) { return document.getElementById(id).value; }
+
+async function hmacSHA256Hex(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function registerWebhook() {
+  const url = val('wh-url') || document.getElementById('wh-url').placeholder;
+  const { res, data } = await call('/webhooks', { url });
+  if (res.ok) {
+    webhook = { url: data.url, secret: data.secret };
+    showToast(`✅ Webhook registrado: ${data.url}`);
+  } else {
+    showToast(`❌ ${data.message || 'no se pudo registrar el webhook'}`, true);
+  }
+}
+
+async function previewWebhookEvent(transaction) {
+  if (!webhook) return;
+  const body = JSON.stringify({ event: 'transfer.updated', data: transaction });
+  const signature = await hmacSHA256Hex(webhook.secret, body);
+  document.getElementById('webhook-preview').textContent =
+    `POST ${webhook.url}\n` +
+    `Content-Type: application/json\n` +
+    `X-Webhook-Signature: ${signature}\n\n` +
+    JSON.stringify({ event: 'transfer.updated', data: transaction }, null, 2);
+}
+
+function renderWallet() {
+  document.getElementById('wallet').innerHTML = ACCOUNTS.map(a => `
+    <div class="account-card ${a.cls} ${a.id === fromAccount.id ? 'active' : ''}" onclick="selectFrom('${a.id}')">
+      <div class="cur">${a.currency}</div>
+      <div class="bal">${a.balance}</div>
+    </div>`).join('');
+
+  document.getElementById('from-chip').textContent = 'Desde: ' + fromAccount.label;
+
+  const toOpts = ACCOUNTS.filter(a => a.id !== fromAccount.id)
+    .map(a => `<option value="${a.id}">${a.label} (${a.currency})</option>`).join('');
+  document.getElementById('tr-to').innerHTML = toOpts;
+}
+
+function selectFrom(id) {
+  fromAccount = ACCOUNTS.find(a => a.id === id);
+  renderWallet();
+  refreshTransactions();
+}
+
+async function refreshBalances() {
+  await Promise.all(ACCOUNTS.map(async (a) => {
+    const res = await fetch(`/accounts/${a.id}/balance`);
+    const data = await res.json().catch(() => ({}));
+    if (data.balanceMinorUnits !== undefined) {
+      a.balance = (Number(data.balanceMinorUnits) / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    }
+  }));
+  renderWallet();
+}
+
+const STATUS_LABEL = { completed: 'Completada', flagged: 'En revisión', pending: 'En revisión', failed: 'Rechazada' };
+// ponytail: las transferencias que fallan no llegan a crearse en el backend (se cortan
+// antes de guardar el Transaction), así que se guardan acá solo para mostrarlas en la lista.
+const recentFailures = {};
+
+function recordFailure(fromAccountId, toAccountId, amountMinorUnits, currency, toCurrency, reason) {
+  const list = recentFailures[fromAccountId] ??= [];
+  list.unshift({
+    id: 'failed-' + crypto.randomUUID(), status: 'failed', reason,
+    fromAccountId, toAccountId, amountMinorUnits, convertedAmountMinorUnits: amountMinorUnits,
+    currency, toCurrency, createdAt: new Date().toISOString(),
+  });
+  list.length = Math.min(list.length, 10);
+}
+
+async function refreshTransactions() {
+  const res = await fetch(`/accounts/${fromAccount.id}/transactions`);
+  const backendTxs = await res.json().catch(() => []);
+  const txs = [...(recentFailures[fromAccount.id] || []), ...(Array.isArray(backendTxs) ? backendTxs : [])]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const list = document.getElementById('tx-list');
+
+  if (txs.length === 0) {
+    list.innerHTML = '<div class="empty-hint">Todavía no hay movimientos en esta cuenta</div>';
+    return;
+  }
+
+  list.innerHTML = txs.map(txRow).join('');
+}
+
+function txRow(tx) {
+  const isOut = tx.fromAccountId === fromAccount.id;
+  const amount = (Number(isOut ? tx.amountMinorUnits : tx.convertedAmountMinorUnits) / 100)
+    .toLocaleString('es-AR', { minimumFractionDigits: 2 });
+  const currency = isOut ? tx.currency : tx.toCurrency;
+  const when = tx.pending ? 'Procesando ahora' : tx.reason || new Date(tx.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return `
+      <div class="tx-row ${tx.status === 'failed' ? 'is-failed' : ''}" ${tx.pending ? `id="${tx.id}"` : ''}>
+        <div class="tx-dir">
+          <span class="tx-icon ${tx.status === 'failed' ? 'failed' : (isOut ? 'out' : 'in')}">${tx.status === 'failed' ? '✕' : (isOut ? '↑' : '↓')}</span>
+          <div>
+            <div class="tx-amount">${isOut ? '-' : '+'}${amount} ${currency}</div>
+            <div class="tx-meta">${when}</div>
+          </div>
+        </div>
+        <div class="tx-tags">
+          ${tx.status === 'flagged' ? `<span class="tx-tag fraud" title="${tx.fraudReason || 'regla de fraude'} — la plata no se movió hasta que se revise">⚠ ${tx.fraudReason || 'en revisión'}</span>` : ''}
+          <span class="tx-status ${tx.status}">${STATUS_LABEL[tx.status] || tx.status}</span>
+        </div>
+      </div>`;
+}
+
+async function call(path, body, headers = {}) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+async function continueAuth() {
+  const email = val('reg-email');
+  const password = val('reg-pass');
+  let { data } = await call('/auth/login', { email, password });
+  if (!data.accessToken) {
+    await call('/auth/register', { email, password });
+    ({ data } = await call('/auth/login', { email, password }));
+  }
+  if (data.accessToken) setSession(data.accessToken, email);
+}
+
+function setSession(newToken, email) {
+  token = newToken;
+  localStorage.setItem('pt-token', token);
+  localStorage.setItem('pt-email', email);
+  const pill = document.getElementById('session-pill');
+  pill.textContent = '🔓 ' + email;
+  pill.classList.remove('empty');
+  document.getElementById('auth-form').hidden = true;
+  document.getElementById('app-view').hidden = false;
+  document.getElementById('wallet-block').hidden = false;
+  document.getElementById('webhook-panel').hidden = false;
+  renderWallet();
+  refreshBalances();
+  refreshTransactions();
+  registerWebhook();
+}
+
+function logout() {
+  token = null;
+  localStorage.removeItem('pt-token');
+  localStorage.removeItem('pt-email');
+  const pill = document.getElementById('session-pill');
+  pill.textContent = 'Sin sesión';
+  pill.classList.add('empty');
+  document.getElementById('auth-form').hidden = false;
+  document.getElementById('app-view').hidden = true;
+  document.getElementById('wallet-block').hidden = true;
+  document.getElementById('webhook-panel').hidden = true;
+}
+
+let toastTimer;
+function showToast(message, isError = false) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.toggle('err', isError);
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+async function transfer() {
+  const to = ACCOUNTS.find(a => a.id === val('tr-to'));
+  const amountMinorUnits = Math.round(Number(val('tr-amount')) * 100).toString();
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+
+  const tempId = 'pending-' + crypto.randomUUID();
+  const list = document.getElementById('tx-list');
+  list.insertAdjacentHTML('afterbegin', txRow({
+    id: tempId, pending: true, status: 'pending',
+    fromAccountId: fromAccount.id, toAccountId: val('tr-to'),
+    amountMinorUnits, convertedAmountMinorUnits: amountMinorUnits,
+    currency: fromAccount.currency, toCurrency: to.currency,
+  }));
+
+  const transferBody = { fromAccountId: fromAccount.id, toAccountId: val('tr-to'), amountMinorUnits };
+  const idempotencyKey = crypto.randomUUID();
+  const { res, data } = await call('/transfers', transferBody, { 'idempotency-key': idempotencyKey });
+
+  btn.disabled = false;
+  btn.textContent = 'Enviar';
+  document.getElementById(tempId)?.remove();
+
+  if (res.ok) {
+    showToast(`✅ Enviaste ${val('tr-amount')} ${fromAccount.currency} a ${to.label}`);
+    lastTransfer = { body: transferBody, idempotencyKey, originalId: data.id };
+    document.getElementById('replay-btn').disabled = false;
+    document.getElementById('replay-log').textContent = '';
+    refreshBalances();
+    previewWebhookEvent(data);
+  } else {
+    showToast(`❌ ${data.message || 'No se pudo completar la transferencia'}`, true);
+    recordFailure(fromAccount.id, val('tr-to'), amountMinorUnits, fromAccount.currency, to.currency, data.message);
+  }
+  refreshTransactions();
+}
+
+async function replayLastTransfer() {
+  if (!lastTransfer) return;
+  const log = document.getElementById('replay-log');
+  log.textContent = 'Reenviando con la misma Idempotency-Key...';
+
+  const balanceBefore = await fetch(`/accounts/${fromAccount.id}/balance`).then(r => r.json());
+  const { data } = await call('/transfers', lastTransfer.body, { 'idempotency-key': lastTransfer.idempotencyKey });
+  const balanceAfter = await fetch(`/accounts/${fromAccount.id}/balance`).then(r => r.json());
+
+  const sameTx = data.id === lastTransfer.originalId;
+  const balanceUnchanged = balanceBefore.balanceMinorUnits === balanceAfter.balanceMinorUnits;
+
+  log.innerHTML = sameTx && balanceUnchanged
+    ? `✅ Misma transacción devuelta (id ${data.id.slice(0, 8)}…), el saldo no se movió — no se duplicó.`
+    : `⚠️ Se creó una transacción distinta o el saldo cambió — revisar.`;
+
+  refreshBalances();
+  refreshTransactions();
+}
+
+function concurrencyCard(label) {
+  return `
+    <div class="race-card" id="race-${label}">
+      <div class="race-label">Transferencia ${label}</div>
+      <div class="race-spinner"></div>
+      <div class="race-result">Procesando...</div>
+    </div>`;
+}
+
+function settleConcurrencyCard(label, ok, message) {
+  const card = document.getElementById('race-' + label);
+  card.classList.add(ok ? 'won' : 'lost');
+  card.querySelector('.race-spinner').remove();
+  card.querySelector('.race-result').textContent = ok ? '✅ Aceptada' : '❌ ' + (message || 'Rechazada');
+}
+
+async function testConcurrentTransfers() {
+  const to = ACCOUNTS.find(a => a.id === val('tr-to'));
+  const amountMinorUnits = Math.round(Number(val('tr-amount')) * 100).toString();
+  const log = document.getElementById('concurrency-log');
+  log.innerHTML = `<div class="race-track">${concurrencyCard('A')}${concurrencyCard('B')}</div><div class="race-summary">disparando ambas en simultáneo...</div>`;
+
+  const balanceBefore = await fetch(`/accounts/${fromAccount.id}/balance`).then(r => r.json());
+  const start = performance.now();
+
+  const run = (label) => call('/transfers', { fromAccountId: fromAccount.id, toAccountId: to.id, amountMinorUnits }, { 'idempotency-key': crypto.randomUUID() })
+    .then(({ res, data }) => {
+      settleConcurrencyCard(label, res.ok, data.message);
+      if (res.ok) previewWebhookEvent(data);
+      else recordFailure(fromAccount.id, to.id, amountMinorUnits, fromAccount.currency, to.currency, data.message);
+      return res.ok;
+    });
+
+  const [aOk, bOk] = await Promise.all([run('A'), run('B')]);
+  const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+
+  const balanceAfter = await fetch(`/accounts/${fromAccount.id}/balance`).then(r => r.json());
+  const expectedDrop = (aOk ? Number(amountMinorUnits) : 0) + (bOk ? Number(amountMinorUnits) : 0);
+  const actualDrop = Number(balanceBefore.balanceMinorUnits) - Number(balanceAfter.balanceMinorUnits);
+  const consistent = actualDrop === expectedDrop;
+
+  document.querySelector('#concurrency-log .race-summary').innerHTML =
+    `Tardaron ${elapsed}s en total (corrieron en paralelo) · ${consistent ? '✅' : '⚠️'} saldo descontado ${(actualDrop / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })} ${fromAccount.currency}`;
+
+  refreshBalances();
+  refreshTransactions();
+}
+
+const savedToken = localStorage.getItem('pt-token');
+const savedEmail = localStorage.getItem('pt-email');
+if (savedToken && savedEmail) setSession(savedToken, savedEmail);
+</script>
+</body>
+</html>

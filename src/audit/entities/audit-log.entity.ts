@@ -14,6 +14,6 @@ export class AuditLog {
   @Column({ type: 'jsonb', nullable: true })
   metadata: unknown;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

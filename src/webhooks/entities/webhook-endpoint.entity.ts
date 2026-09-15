@@ -14,6 +14,6 @@ export class WebhookEndpoint {
   @Column({ default: true })
   active: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

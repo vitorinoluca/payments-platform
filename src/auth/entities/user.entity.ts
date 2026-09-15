@@ -17,6 +17,6 @@ export class User {
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

@@ -8,6 +8,11 @@ export class IdempotencyKey {
   @Column({ type: 'jsonb', nullable: true })
   responseBody: unknown;
 
-  @CreateDateColumn()
+  // sha256 del request body; si la misma key llega con un body distinto, es un error del
+  // cliente (key reusada), no un reintento legítimo
+  @Column()
+  requestHash: string;
+
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

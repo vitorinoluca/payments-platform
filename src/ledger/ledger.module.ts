@@ -11,6 +11,7 @@ import { LedgerEntry } from './entities/ledger-entry.entity';
 import { Transaction } from './entities/transaction.entity';
 import { TransfersController } from './transfers/transfers.controller';
 import { TransfersService } from './transfers/transfers.service';
+import { AccountsController } from './accounts.controller';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { TransfersService } from './transfers/transfers.service';
     FxModule,
     AuditModule,
   ],
-  controllers: [TransfersController],
+  controllers: [TransfersController, AccountsController],
   providers: [TransfersService],
   exports: [TypeOrmModule],
 })

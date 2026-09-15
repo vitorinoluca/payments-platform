@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from '../../audit/audit.service';
 import { FraudService } from '../../fraud/fraud.service';
@@ -40,6 +41,12 @@ export class TransfersService {
       throw new BadRequestException('fromAccountId y toAccountId no pueden ser iguales');
     }
 
+    const requestHash = createHash('sha256').update(JSON.stringify(dto)).digest('hex');
+
+    // ponytail: simula el tiempo de procesamiento de un banco real; si hace falta un
+    // estado "pending" visible mientras se procesa, pasar a un flujo async con polling/WS.
+    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1500));
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -52,12 +59,15 @@ export class TransfersService {
       // Se usa SQL crudo con RETURNING porque el "identifiers" de TypeORM se arma a
       // partir de los valores provistos, no de si Postgres realmente insertó la fila.
       const insertedRows: Array<{ key: string }> = await queryRunner.query(
-        `INSERT INTO idempotency_keys(key) VALUES ($1) ON CONFLICT (key) DO NOTHING RETURNING key`,
-        [idempotencyKey],
+        `INSERT INTO idempotency_keys(key, "requestHash") VALUES ($1, $2) ON CONFLICT (key) DO NOTHING RETURNING key`,
+        [idempotencyKey, requestHash],
       );
 
       if (insertedRows.length === 0) {
         const existing = await idempotencyRepo.findOneBy({ key: idempotencyKey });
+        if (existing!.requestHash !== requestHash) {
+          throw new ConflictException('la Idempotency-Key ya fue usada con una petición distinta');
+        }
         await queryRunner.commitTransaction();
         return existing!.responseBody as Transaction;
       }
@@ -87,9 +97,10 @@ export class TransfersService {
       const transactionRepo = queryRunner.manager.getRepository(Transaction);
 
       const fraudResult = await this.fraudService.evaluate(queryRunner.manager, fromAccount.id, amount);
+
       if (fraudResult.flagged) {
-        // se retiene la plata: se crea la transacción como 'flagged' pero no se generan
-        // ledger_entries, así que el balance no se mueve hasta que se revise.
+        // se retiene la plata: no se generan ledger_entries, así que el balance no se
+        // mueve hasta que alguien la revise (no hay endpoint de revisión todavía).
         const flaggedTransaction = await transactionRepo.save(
           transactionRepo.create({
             fromAccountId: fromAccount.id,
@@ -100,6 +111,7 @@ export class TransfersService {
             exchangeRate: exchangeRate.toString(),
             convertedAmountMinorUnits: convertedAmount.toString(),
             status: TransactionStatus.FLAGGED,
+            fraudReason: fraudResult.reason ?? null,
           }),
         );
 
@@ -112,6 +124,7 @@ export class TransfersService {
           fromAccountId: fromAccount.id,
           toAccountId: toAccount.id,
           amountMinorUnits: amount.toString(),
+          fraudReason: fraudResult.reason,
         });
         return flaggedTransaction;
       }

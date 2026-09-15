@@ -8,6 +8,6 @@ export class Account {
   @Column({ length: 3 })
   currency: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

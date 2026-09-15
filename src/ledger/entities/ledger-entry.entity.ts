@@ -25,6 +25,6 @@ export class LedgerEntry {
   @Column({ type: 'bigint' })
   amountMinorUnits: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

@@ -8,12 +8,12 @@ export class RefreshToken {
   @Column({ type: 'uuid' })
   userId: string;
 
-  @Column()
+  @Column({ type: 'timestamptz' })
   expiresAt: Date;
 
   @Column({ default: false })
   revoked: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
